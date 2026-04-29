@@ -12,9 +12,26 @@ use mupdf_sys::*;
 
 use crate::{
     context, from_enum, rust_slice_to_ffi_ptr, unsafe_impl_ffi_wrapper, Buffer, Error, FFIWrapper,
-    Image, Matrix, Point, Quad, Rect, WriteMode,
+    Font, Image, Matrix, Point, Quad, Rect, WriteMode,
 };
 use crate::{output::Output, FFIAnalogue};
+
+bitflags! {
+    /// Per-char flags reported by the structured-text extractor.
+    pub struct TextCharFlags: u16 {
+        const STRIKEOUT = FZ_STEXT_STRIKEOUT as _;
+        const UNDERLINE = FZ_STEXT_UNDERLINE as _;
+        const SYNTHETIC = FZ_STEXT_SYNTHETIC as _;
+        /// Real or synthesised ("fake") bold.
+        const BOLD = FZ_STEXT_BOLD as _;
+        const FILLED = FZ_STEXT_FILLED as _;
+        const STROKED = FZ_STEXT_STROKED as _;
+        const CLIPPED = FZ_STEXT_CLIPPED as _;
+        const UNICODE_IS_CID = FZ_STEXT_UNICODE_IS_CID as _;
+        const UNICODE_IS_GID = FZ_STEXT_UNICODE_IS_GID as _;
+        const SYNTHETIC_LARGE = FZ_STEXT_SYNTHETIC_LARGE as _;
+    }
+}
 
 bitflags! {
     /// Options for creating a pixmap and draw device.
@@ -453,6 +470,30 @@ impl TextChar<'_> {
 
     pub fn quad(&self) -> Quad {
         self.inner.quad.into()
+    }
+
+    /// Per-char fill colour, packed as `0xAARRGGBB` (sRGB).
+    pub fn argb(&self) -> u32 {
+        self.inner.argb
+    }
+
+    /// Style flags (bold, underline, …) reported by the extractor.
+    pub fn flags(&self) -> TextCharFlags {
+        TextCharFlags::from_bits_truncate(self.inner.flags)
+    }
+
+    /// Font this char was drawn with. Returns `None` if mupdf did not
+    /// associate one (e.g. some synthetic chars). Bumps the font refcount
+    /// so the returned [`Font`] can outlive this [`TextChar`].
+    pub fn font(&self) -> Option<Font> {
+        let ptr = self.inner.font;
+        if ptr.is_null() {
+            return None;
+        }
+        unsafe {
+            fz_keep_font(context(), ptr);
+            Some(Font::from_raw(ptr))
+        }
     }
 }
 
