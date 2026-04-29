@@ -111,7 +111,7 @@ pub use shade::Shade;
 pub use size::Size;
 pub use stroke_state::{LineCap, LineJoin, StrokeState};
 pub use text::{Text, TextItem, TextSpan};
-pub use text_page::{TextBlock, TextChar, TextLine, TextPage, TextPageFlags};
+pub use text_page::{TextBlock, TextChar, TextCharFlags, TextLine, TextPage, TextPageFlags};
 
 use core::{marker::PhantomData, ptr::NonNull};
 use zerocopy::{FromBytes, IntoBytes};
