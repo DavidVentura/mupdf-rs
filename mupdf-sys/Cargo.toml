@@ -225,6 +225,8 @@ cbz = []
 img = []
 html = []
 epub = []
+brotli = []
+docx-output = []
 tesseract = []
 zxingcpp = []
 libarchive = []
@@ -239,4 +241,3 @@ regex = "1.11"
 
 [dependencies]
 zerocopy = { version = "0.8.17", features = ["derive"], optional = true }
-
