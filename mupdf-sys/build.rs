@@ -130,7 +130,10 @@ fn build_wrapper(target: &Target) -> Result<()> {
             build.file(&path);
         }
     }
-    build.include("mupdf/include").include("wrapper");
+    build
+        .include("mupdf/include")
+        .include("wrapper")
+        .include(".");
     if target.os == "android" {
         build.define("HAVE_ANDROID", None);
     }
@@ -255,13 +258,14 @@ fn generate_bindings(target: &Target, path: &Path, sysroot: Option<String>) -> R
 }
 
 // see https://github.com/ArtifexSoftware/mupdf/blob/master/source/fitz/noto.c
-const FONTS: [&str; 6] = [
+const FONTS: [&str; 7] = [
     "TOFU",
     "TOFU_CJK",
     "TOFU_NOTO",
     "TOFU_SYMBOL",
     "TOFU_EMOJI",
     "TOFU_SIL",
+    "TOFU_BASE14",
 ];
 
 enum Build {
@@ -285,6 +289,13 @@ impl Build {
         };
     }
 
+    fn define_flag(&mut self, var: &str) {
+        match self {
+            Self::Make(m) => m.define_flag(var),
+            Self::Msbuild(m) => m.define_flag(var),
+        };
+    }
+
     fn define_bool(&mut self, var: &str, val: bool) {
         self.define(var, if val { "1" } else { "0" });
     }
@@ -301,11 +312,16 @@ impl Build {
         self.fz_enable("HTML", cfg!(feature = "html"));
         self.fz_enable("EPUB", cfg!(feature = "epub"));
         self.fz_enable("JS", cfg!(feature = "js"));
+        self.fz_enable("HYPHEN", false);
 
         for font in &FONTS {
             // TOFU flags skip fonts when set to 1
             // So we invert: all-fonts=true means TOFU=0 (include fonts)
-            self.define_bool(font, !cfg!(feature = "all-fonts"));
+            if cfg!(feature = "all-fonts") {
+                self.define_bool(font, false);
+            } else {
+                self.define_flag(font);
+            }
         }
 
         match self {
