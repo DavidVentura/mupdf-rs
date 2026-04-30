@@ -289,18 +289,52 @@ impl Build {
         self.define(var, if val { "1" } else { "0" });
     }
 
+    fn make_bool(&mut self, var: &str, val: bool) {
+        if let Self::Make(m) = self {
+            m.make_bool(var, val);
+        }
+    }
+
     fn fz_enable(&mut self, name: &str, enable: bool) {
         self.define_bool(&format!("FZ_ENABLE_{name}"), enable);
     }
 
     fn run(mut self, target: &Target, build_dir: &str) -> Result<()> {
-        self.fz_enable("XPS", cfg!(feature = "xps"));
-        self.fz_enable("SVG", cfg!(feature = "svg"));
-        self.fz_enable("CBZ", cfg!(feature = "cbz"));
-        self.fz_enable("IMG", cfg!(feature = "img"));
-        self.fz_enable("HTML", cfg!(feature = "html"));
-        self.fz_enable("EPUB", cfg!(feature = "epub"));
-        self.fz_enable("JS", cfg!(feature = "js"));
+        let xps = cfg!(feature = "xps");
+        let svg = cfg!(feature = "svg");
+        let cbz = cfg!(feature = "cbz");
+        let img = cfg!(feature = "img");
+        let html = cfg!(feature = "html");
+        let epub = cfg!(feature = "epub");
+        let js = cfg!(feature = "js");
+        let brotli = cfg!(feature = "brotli");
+        let docx_output = cfg!(feature = "docx-output");
+        let tesseract = cfg!(feature = "tesseract");
+        let zxingcpp = cfg!(feature = "zxingcpp");
+        let libarchive = cfg!(feature = "libarchive");
+
+        // gates #ifdef
+        self.fz_enable("XPS", xps);
+        self.fz_enable("SVG", svg);
+        self.fz_enable("CBZ", cbz);
+        self.fz_enable("IMG", img);
+        self.fz_enable("HTML", html);
+        self.fz_enable("EPUB", epub);
+        self.fz_enable("JS", js);
+        self.fz_enable("BROTLI", brotli);
+        self.fz_enable("DOCX_OUTPUT", docx_output);
+        self.fz_enable("HYPHEN", false);
+
+        // gates which features get built
+        self.make_bool("xps", xps);
+        self.make_bool("svg", svg);
+        self.make_bool("mujs", js);
+        self.make_bool("html", html || epub);
+        self.make_bool("brotli", brotli);
+        self.make_bool("extract", docx_output);
+        self.make_bool("tesseract", tesseract);
+        self.make_bool("barcode", zxingcpp);
+        self.make_bool("archive", libarchive);
 
         for font in &FONTS {
             // TOFU flags skip fonts when set to 1

@@ -32,7 +32,7 @@ impl Make {
         self.make_flags.push(flag);
     }
 
-    fn make_bool(&mut self, var: &str, val: bool) {
+    pub(crate) fn make_bool(&mut self, var: &str, val: bool) {
         self.make_var(var, if val { "yes" } else { "no" });
     }
 
