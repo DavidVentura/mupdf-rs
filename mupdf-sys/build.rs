@@ -336,8 +336,10 @@ impl Target {
             os: env::var("CARGO_CFG_TARGET_OS")?,
             env: env::var("CARGO_CFG_TARGET_ENV")?,
 
-            features: env::var("CARGO_CFG_TARGET_FEATURE")?
+            features: env::var("CARGO_CFG_TARGET_FEATURE")
+                .unwrap_or_default()
                 .split(',')
+                .filter(|feature| !feature.is_empty())
                 .map(str::to_owned)
                 .collect(),
         })
