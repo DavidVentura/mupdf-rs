@@ -6,26 +6,27 @@ use std::sync::Mutex;
 use mupdf_sys::*;
 use once_cell::sync::Lazy;
 
+use crate::system_font::{self, SystemFontLoader};
 use crate::Error;
 
 static BASE_CONTEXT: Lazy<Mutex<BaseContext>> = Lazy::new(|| {
     let ctx = unsafe {
         let base_ctx = mupdf_new_base_context();
-        #[cfg(all(
-            not(target_os = "android"),
-            not(target_arch = "wasm32"),
-            feature = "system-fonts"
-        ))]
+
+        // Best-effort default; ignored if the user already called
+        // install_system_font_loader.
+        #[cfg(all(feature = "system-fonts", not(target_arch = "wasm32")))]
         {
-            use crate::system_font;
-            // Android version is written in C
-            fz_install_load_system_font_funcs(
-                base_ctx,
-                Some(system_font::load_system_font),
-                Some(system_font::load_system_cjk_font),
-                Some(system_font::load_system_fallback_font),
-            );
+            let _ = system_font::install(Box::new(system_font::font_kit::FontKitLoader));
         }
+
+        fz_install_load_system_font_funcs(
+            base_ctx,
+            Some(system_font::trampoline_load_font),
+            Some(system_font::trampoline_load_cjk_font),
+            Some(system_font::trampoline_load_fallback_font),
+        );
+
         base_ctx
     };
     Mutex::new(BaseContext(ctx))
@@ -85,6 +86,15 @@ impl Context {
             *ctx.borrow_mut() = RawContext(new_ctx);
             Self { inner: new_ctx }
         })
+    }
+
+    /// First call wins; later calls (including the `system-fonts` feature's
+    /// auto-install) return the rejected loader as `Err`. Call before the
+    /// first [`Context::get`] to take precedence.
+    pub fn install_system_font_loader<L: SystemFontLoader>(
+        loader: L,
+    ) -> Result<(), Box<dyn SystemFontLoader>> {
+        system_font::install(Box::new(loader))
     }
 
     pub fn enable_icc(&mut self) {

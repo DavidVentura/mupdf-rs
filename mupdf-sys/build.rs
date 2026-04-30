@@ -62,7 +62,7 @@ fn run() -> Result<()> {
         copy_recursive(&src_dir, build_dir.as_ref(), &[".git".as_ref()])?;
 
         Build::new(&target).run(&target, build_dir)?;
-        build_wrapper(&target).map_err(|e| format!("Unable to compile mupdf wrapper:\n  {e}"))?;
+        build_wrapper().map_err(|e| format!("Unable to compile mupdf wrapper:\n  {e}"))?;
     }
 
     generate_bindings(&target, &out_dir.join("bindings.rs"), sysroot)
@@ -121,7 +121,7 @@ fn copy_recursive(src: &Path, dst: &Path, ignore: &[&OsStr]) -> Result<()> {
     Ok(())
 }
 
-fn build_wrapper(target: &Target) -> Result<()> {
+fn build_wrapper() -> Result<()> {
     let mut build = cc::Build::new();
     for entry in fs::read_dir("wrapper")? {
         let entry = entry?;
@@ -131,9 +131,6 @@ fn build_wrapper(target: &Target) -> Result<()> {
         }
     }
     build.include("mupdf/include").include("wrapper");
-    if target.os == "android" {
-        build.define("HAVE_ANDROID", None);
-    }
     build.try_compile("mupdf-wrapper")?;
     Ok(())
 }
@@ -264,6 +261,8 @@ const FONTS: [&str; 6] = [
     "TOFU_SIL",
 ];
 
+const BASE14_FONT_PRUNE_FLAG: &str = "TOFU_BASE14";
+
 enum Build {
     Make(Make),
     Msbuild(Msbuild),
@@ -285,6 +284,13 @@ impl Build {
         };
     }
 
+    fn define_flag(&mut self, var: &str) {
+        match self {
+            Self::Make(m) => m.define_flag(var),
+            Self::Msbuild(m) => m.define_flag(var),
+        };
+    }
+
     fn define_bool(&mut self, var: &str, val: bool) {
         self.define(var, if val { "1" } else { "0" });
     }
@@ -301,11 +307,14 @@ impl Build {
         self.fz_enable("HTML", cfg!(feature = "html"));
         self.fz_enable("EPUB", cfg!(feature = "epub"));
         self.fz_enable("JS", cfg!(feature = "js"));
+        if !cfg!(feature = "all-fonts") {
+            for font in &FONTS {
+                self.define_flag(font);
+            }
 
-        for font in &FONTS {
-            // TOFU flags skip fonts when set to 1
-            // So we invert: all-fonts=true means TOFU=0 (include fonts)
-            self.define_bool(font, !cfg!(feature = "all-fonts"));
+            if !cfg!(feature = "base14-fonts") {
+                self.define_flag(BASE14_FONT_PRUNE_FLAG);
+            }
         }
 
         match self {

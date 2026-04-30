@@ -65,8 +65,8 @@ pub mod size;
 /// Stroke state
 pub mod stroke_state;
 
-/// System font loading
-#[cfg(all(feature = "system-fonts", not(target_arch = "wasm32")))]
+/// System font loading: pluggable [`system_font::SystemFontLoader`] trait plus
+/// optional ready-made impls (font-kit, Android).
 pub mod system_font;
 /// Text objects
 pub mod text;
