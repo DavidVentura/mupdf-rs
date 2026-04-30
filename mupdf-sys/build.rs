@@ -123,12 +123,17 @@ fn copy_recursive(src: &Path, dst: &Path, ignore: &[&OsStr]) -> Result<()> {
 
 fn build_wrapper(target: &Target) -> Result<()> {
     let mut build = cc::Build::new();
+    let mut wrapper_sources = Vec::new();
     for entry in fs::read_dir("wrapper")? {
         let entry = entry?;
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "c") {
-            build.file(&path);
+            wrapper_sources.push(path);
         }
+    }
+    wrapper_sources.sort();
+    for path in wrapper_sources {
+        build.file(path);
     }
     build
         .include("mupdf/include")
