@@ -341,6 +341,7 @@ impl Build {
         self.fz_enable("JS", js);
         self.fz_enable("BROTLI", brotli);
         self.fz_enable("DOCX_OUTPUT", docx_output);
+        self.fz_enable("HYPHEN", false);
 
         // These MuPDF make variables decide which source files and third-party
         // libraries are built; FZ_ENABLE_* only controls preprocessor paths.
