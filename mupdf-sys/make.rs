@@ -222,12 +222,22 @@ impl Make {
 
         let compiler = self.build.get_compiler();
         self.make_var("CC", compiler.path());
-        self.make_var("XCFLAGS", compiler.cflags_env());
+        let mut cflags = compiler.cflags_env();
+        let pointer_width = std::env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap();
+        if target.os == "android" && pointer_width == "32" {
+            cflags.push(" -Dfseeko=fseek -Dftello=ftell");
+        }
+
+        self.make_var("XCFLAGS", &cflags);
 
         self.build.cpp(true);
         let compiler = self.build.get_compiler();
         self.make_var("CXX", compiler.path());
-        self.make_var("XCXXFLAGS", compiler.cflags_env());
+        let mut cxxflags = compiler.cflags_env();
+        if target.os == "android" && pointer_width == "32" {
+            cxxflags.push(" -Dfseeko=fseek -Dftello=ftell");
+        }
+        self.make_var("XCXXFLAGS", &cxxflags);
 
         let make = if cfg!(any(
             target_os = "freebsd",
